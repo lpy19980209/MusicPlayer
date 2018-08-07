@@ -495,6 +495,9 @@ public class MainActivity extends AppCompatActivity {
                         break;
                     case "清空音乐列表":
                         deleteFile("musicList.xml");
+                        SharedPreferences.Editor editor =  getSharedPreferences("play_state.preference", MODE_PRIVATE).edit();
+                        editor.clear();
+                        editor.apply();
                         finish();
                         Intent intent = new Intent(MainActivity.this, MainActivity.class);
                         startActivity(intent);
@@ -654,7 +657,6 @@ public class MainActivity extends AppCompatActivity {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                //todo
                 ((TextView)findViewById(R.id.current_position)).setText(currentPosition);
                 ((TextView)findViewById(R.id.duration)).setText(duration);
                 ((ProgressBar)findViewById(R.id.play_progress)).setProgress((int)(percent * 1000));
@@ -753,3 +755,8 @@ public class MainActivity extends AppCompatActivity {
         super.onPause();
     }
 }
+
+//todo
+//解决播放列表的加载问题
+//可以考虑对象序列化
+//也可以考虑将 metaDateList 保存下来
