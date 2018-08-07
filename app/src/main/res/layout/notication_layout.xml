@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/main_background">
+    <LinearLayout
+        android:orientation="horizontal"
+        android:layout_width="match_parent"
+        android:layout_height="70dp"
+        android:gravity="center">
+
+        <ImageButton
+            android:id="@+id/last_music"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="center"
+            android:layout_margin="10dp"
+            android:background="#0000"
+            android:src="@drawable/last_music" />
+
+        <ImageButton
+            android:id="@+id/play_or_pause"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="center"
+            android:layout_margin="10dp"
+            android:background="@drawable/playbutton_bg"
+            android:src="@drawable/play_music" />
+
+        <ImageButton
+            android:id="@+id/next_music"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:layout_gravity="center"
+            android:layout_margin="10dp"
+            android:background="#0000"
+            android:src="@drawable/next_music"
+            android:text="下一曲" />
+    </LinearLayout>
+</LinearLayout>

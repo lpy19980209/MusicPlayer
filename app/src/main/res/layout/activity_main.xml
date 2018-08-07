@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="utf-8"?>
+<android.support.v4.widget.DrawerLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/drawer"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/main_background"
+            android:orientation="vertical"
+            android:paddingTop="25dp"
+            tools:context=".MainActivity">
+
+            <ListView
+                android:id="@+id/music_listview"
+                android:layout_width="match_parent"
+                android:layout_height="0dp"
+                android:layout_weight="1">
+
+            </ListView>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="70dp"
+                android:gravity="center">
+
+                <ImageButton
+                    android:id="@+id/last_music"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_gravity="center"
+                    android:layout_margin="10dp"
+                    android:background="#0000"
+                    android:src="@drawable/last_music" />
+
+                <ImageButton
+                    android:id="@+id/play_or_pause"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_gravity="center"
+                    android:layout_margin="10dp"
+                    android:background="@drawable/playbutton_bg"
+                    android:src="@drawable/play_music" />
+
+                <ImageButton
+                    android:id="@+id/next_music"
+                    android:layout_width="50dp"
+                    android:layout_height="50dp"
+                    android:layout_gravity="center"
+                    android:layout_margin="10dp"
+                    android:background="#0000"
+                    android:src="@drawable/next_music"
+                    android:text="下一曲" />
+            </LinearLayout>
+
+
+        </LinearLayout>
+
+        <ProgressBar
+            android:id="@+id/music_load_processbar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone" />
+    </FrameLayout>
+
+    <android.support.design.widget.NavigationView
+        android:id="@+id/left_nav"
+        android:layout_width="wrap_content"
+        android:layout_height="match_parent"
+        android:layout_gravity="start"
+        android:fitsSystemWindows="true"
+        app:headerLayout="@layout/left_nav_header"
+        android:background="@drawable/main_background"
+        app:menu="@menu/left_nav_menu"
+        app:itemTextColor="#FFF"
+        app:itemTextAppearance="?attr/textAppearanceLargePopupMenu">
+    </android.support.design.widget.NavigationView>
+</android.support.v4.widget.DrawerLayout>
