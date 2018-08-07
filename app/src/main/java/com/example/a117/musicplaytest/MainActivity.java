@@ -10,6 +10,7 @@ import android.app.RemoteAction;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.IntentFilter;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
@@ -18,6 +19,7 @@ import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
+import android.preference.Preference;
 import android.support.annotation.NonNull;
 import android.support.design.widget.NavigationView;
 import android.support.v4.app.ActivityCompat;
@@ -165,6 +167,12 @@ public class MainActivity extends AppCompatActivity {
 
                     mediaPlayer.seekTo(playProgress);
 
+                    String duration = TimeUtil.sToHMS(mediaPlayer.getDuration());
+                    String progress = TimeUtil.sToHMS(playProgress);
+                    double percent = playProgress / (double) mediaPlayer.getDuration();
+
+                    updateProgress(duration, progress, percent);
+
                     if(!isPlayingBefore)
                         pauseMusic();
 
@@ -226,6 +234,10 @@ public class MainActivity extends AppCompatActivity {
         setNavSelection();
 
         restoreMusicList();
+
+        if(savedInstanceState == null) {
+            restorePlayStateFromPerferences();
+        }
 
 //        showDrawer();
 
@@ -629,6 +641,10 @@ public class MainActivity extends AppCompatActivity {
 
                     }
                 }
+
+                else {
+                    showDrawer();
+                }
             }
         }).start();
 
@@ -646,6 +662,18 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    private void restorePlayStateFromPerferences() {
+        SharedPreferences pref = getSharedPreferences("play_state.preference", MODE_PRIVATE);
+        index = pref.getInt(PLAY_INDEX, 0);
+        playProgress = pref.getInt(PLAY_PROGRESS, 0);
+        isPlayingBefore = false;
+
+        String duration = TimeUtil.sToHMS(mediaPlayer.getDuration());
+        String progress = TimeUtil.sToHMS(playProgress);
+        double percent = playProgress / (double) mediaPlayer.getDuration();
+
+        updateProgress(duration, progress, percent);
+    }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
@@ -677,6 +705,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onDestroy() {
+        Log.d(TAG, "onDestroy: ");
+        super.onDestroy();
+        localBroadcastManager.unregisterReceiver(renewListReceivder);
+
+        unregisterReceiver(noticationReceiver);
+
+        SharedPreferences.Editor editor = getSharedPreferences("play_state.preference", Context.MODE_PRIVATE).edit();
+        editor.putInt(PLAY_INDEX, index);
+        editor.putInt(PLAY_PROGRESS, playProgress);
+        editor.putBoolean(PLAY_STATE, false);
+        editor.apply();
+
+    }
+
+
+    @Override
     protected void onRestart() {
         Log.d(TAG, "onRestart: ");
         super.onRestart();
@@ -694,15 +739,7 @@ public class MainActivity extends AppCompatActivity {
         super.onStop();
     }
 
-    @Override
-    protected void onDestroy() {
-        Log.d(TAG, "onDestroy: ");
-        super.onDestroy();
-        localBroadcastManager.unregisterReceiver(renewListReceivder);
 
-        unregisterReceiver(noticationReceiver);
-
-    }
 
     @Override
     protected void onResume() {

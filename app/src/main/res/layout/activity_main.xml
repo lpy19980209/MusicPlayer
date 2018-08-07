@@ -41,7 +41,7 @@
                     android:id="@+id/current_position"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
-                    android:text="00:01"
+                    android:text="00:00"
                     android:textSize="10dp"
                     android:gravity="center"/>
                 <ProgressBar
@@ -58,7 +58,7 @@
                     android:id="@+id/duration"
                     android:layout_width="wrap_content"
                     android:layout_height="match_parent"
-                    android:text="03:61"
+                    android:text="00:00"
                     android:textSize="10dp"
                     android:gravity="center"/>
 
