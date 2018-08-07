@@ -37,6 +37,7 @@ import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.RemoteViews;
+import android.widget.TextView;
 import android.widget.Toast;
 import android.content.Intent;
 
@@ -53,6 +54,7 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.Reader;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -72,6 +74,10 @@ public class MainActivity extends AppCompatActivity {
 
     Boolean hasInit = false;
     Boolean showNotification = true;
+
+    private String PLAY_PROGRESS = "PLAY_PROGRESS";
+    private String PLAY_INDEX = "PLAY_INDEX";
+    private String PLAY_STATE = "PLAY_STATE";
 
     private BroadcastReceiver renewListReceivder = new BroadcastReceiver() {
         @Override
@@ -108,6 +114,30 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
+    private Thread playProgressRecord = new Thread(new Runnable() {
+        @Override
+        public void run() {
+            int duration;
+            int currentPosition;
+
+            while(true) {
+                if(mediaPlayer.isPlaying()) {
+                    duration = mediaPlayer.getDuration();
+                    currentPosition = mediaPlayer.getCurrentPosition();
+                    Log.d("progress", "run: duration=" + TimeUtil.sToHMS(duration) + ", currentPosition=" + TimeUtil.sToHMS(currentPosition));
+                    updateProgress(TimeUtil.sToHMS(duration), TimeUtil.sToHMS(currentPosition), (double) currentPosition / (double) duration);
+                }
+
+                try {
+                    Thread.sleep(1000);
+                }
+                catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    });
+
     static final int MUSIC_FILE_LOAD_FINISH = 0;
     MusicListviewAdapter musicListviewAdapter;
 
@@ -131,12 +161,20 @@ public class MainActivity extends AppCompatActivity {
                 listView.setAdapter(musicListviewAdapter);
 
                 if(!hasInit) {
-                    playMusic(0);
-                    pauseMusic();
+                    playMusic(index);
+
+                    mediaPlayer.seekTo(playProgress);
+
+                    if(!isPlayingBefore)
+                        pauseMusic();
+
+                    playProgressRecord.start();
+
                     listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
                         @Override
                         public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                             playMusic(i);
+
                         }
                     });
                 }
@@ -161,7 +199,11 @@ public class MainActivity extends AppCompatActivity {
     private NavigationView leftNav;
     private DrawerLayout drawer;
     private ListView listView;
+
     private int index = 0;
+    private int playProgress = 0;
+    private boolean isPlayingBefore = false;
+    //用于只是 destory 之前是否在播放
 
     List<File> musicFileList = new ArrayList<>();
     List<File> musicFileListBuffer;
@@ -351,7 +393,6 @@ public class MainActivity extends AppCompatActivity {
 
     public void playMusic() {
         mediaPlayer.start();
-
         if(mediaPlayer.isPlaying())
             playOrPauseButton.setImageResource(R.drawable.pause_music);
         else
@@ -377,7 +418,9 @@ public class MainActivity extends AppCompatActivity {
                 mediaPlayer.prepare();
                 mediaPlayer.start();
                 index = i;
-                playOrPauseButton.setImageResource(R.drawable.pause_music);
+
+                if(mediaPlayer.isPlaying())
+                    playOrPauseButton.setImageResource(R.drawable.pause_music);
 
                 if(showNotification)
                     sendNotication();
@@ -438,6 +481,11 @@ public class MainActivity extends AppCompatActivity {
                         clearNotication();
                         showNotification = false;
                         break;
+                    case "清空音乐列表":
+                        deleteFile("musicList.xml");
+                        finish();
+                        Intent intent = new Intent(MainActivity.this, MainActivity.class);
+                        startActivity(intent);
                     default:
                         Toast.makeText(MainActivity.this, "操作未定义", Toast.LENGTH_SHORT);
                 }
@@ -535,50 +583,98 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void restoreMusicList() {
-        musicLoadProgressBar.setVisibility(View.VISIBLE);
+
         Log.d(TAG, "restoreMusicList: 进入 restore");
 
         new Thread(new Runnable() {
             @Override
             public void run() {
-                try {
-                    Log.d(TAG, "restoreMusicList: 进入 restore in run");
-                    XmlPullParser parser = XmlPullParserFactory.newInstance().newPullParser();
-                    Reader reader = new BufferedReader(new InputStreamReader(openFileInput("musicList.xml")));
-                    parser.setInput(reader);
-                    int event = parser.getEventType();
-                    String tagName = null;
-                    while(event != XmlPullParser.END_DOCUMENT) {
-                        switch (event) {
-                            case XmlPullParser.START_DOCUMENT:
-                                musicFileListBuffer = new ArrayList<>();
-                                break;
-                            case XmlPullParser.START_TAG:
-                                tagName = parser.getName();
-                                if(tagName.equals("path")) {
-                                    musicFileListBuffer.add(new File(parser.nextText()));
-                                }
-                                break;
-                            case XmlPullParser.END_TAG:
-                                break;
+                Log.d(TAG, "run: directory");
+                if(new File(getFilesDir(),"musicList.xml").exists()) {
+
+                    musicLoadProgressBar.setVisibility(View.VISIBLE);
+
+                    try {
+                        Log.d(TAG, "restoreMusicList: 进入 restore in run");
+                        XmlPullParser parser = XmlPullParserFactory.newInstance().newPullParser();
+                        Reader reader = new BufferedReader(new InputStreamReader(openFileInput("musicList.xml")));
+                        parser.setInput(reader);
+                        int event = parser.getEventType();
+                        String tagName = null;
+                        while (event != XmlPullParser.END_DOCUMENT) {
+                            switch (event) {
+                                case XmlPullParser.START_DOCUMENT:
+                                    musicFileListBuffer = new ArrayList<>();
+                                    break;
+                                case XmlPullParser.START_TAG:
+                                    tagName = parser.getName();
+                                    if (tagName.equals("path")) {
+                                        musicFileListBuffer.add(new File(parser.nextText()));
+                                    }
+                                    break;
+                                case XmlPullParser.END_TAG:
+                                    break;
+                            }
+                            event = parser.next();
                         }
-                        event = parser.next();
+
+                        musicListviewAdapter = new MusicListviewAdapter(MainActivity.this, musicFileListBuffer);
+
+                        myHandler.sendEmptyMessage(MUSIC_FILE_LOAD_FINISH);
+                        Log.d(TAG, "run: restore结束");
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        Log.d(TAG, "run: restore出错");
+                    } finally {
+
                     }
-
-                    musicListviewAdapter = new MusicListviewAdapter(MainActivity.this, musicFileListBuffer);
-
-                    myHandler.sendEmptyMessage(MUSIC_FILE_LOAD_FINISH);
-                    Log.d(TAG, "run: restore结束");
-                }
-                catch (Exception e) {
-                    e.printStackTrace();
-                    Log.d(TAG, "run: restore出错");
                 }
             }
         }).start();
 
     }
 
+    private void updateProgress(final String duration,final  String currentPosition,final double percent) {
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                //todo
+                ((TextView)findViewById(R.id.current_position)).setText(currentPosition);
+                ((TextView)findViewById(R.id.duration)).setText(duration);
+                ((ProgressBar)findViewById(R.id.play_progress)).setProgress((int)(percent * 1000));
+            }
+        });
+    }
+
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        super.onSaveInstanceState(outState);
+        outState.putInt(PLAY_INDEX, index);
+        outState.putBoolean(PLAY_STATE, mediaPlayer.isPlaying());
+
+        try {
+            outState.putInt(PLAY_PROGRESS, mediaPlayer.getCurrentPosition());
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+        //可能会在特定时刻导致错误
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Bundle savedInstanceState) {
+        super.onRestoreInstanceState(savedInstanceState);
+        index = savedInstanceState.getInt(PLAY_INDEX);
+        isPlayingBefore = savedInstanceState.getBoolean(PLAY_STATE);
+
+        try {
+            playProgress = savedInstanceState.getInt(PLAY_PROGRESS);
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
     @Override
     protected void onRestart() {
