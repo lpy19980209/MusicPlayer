@@ -709,17 +709,17 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         Log.d(TAG, "onDestroy: ");
-        super.onDestroy();
         localBroadcastManager.unregisterReceiver(renewListReceivder);
 
         unregisterReceiver(noticationReceiver);
 
         SharedPreferences.Editor editor = getSharedPreferences("play_state.preference", Context.MODE_PRIVATE).edit();
         editor.putInt(PLAY_INDEX, index);
-        editor.putInt(PLAY_PROGRESS, playProgress);
+        editor.putInt(PLAY_PROGRESS, mediaPlayer.getCurrentPosition());
         editor.putBoolean(PLAY_STATE, false);
         editor.apply();
 
+        super.onDestroy();
     }
 
 
