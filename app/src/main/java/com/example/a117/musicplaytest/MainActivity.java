@@ -760,7 +760,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    private List<MusicMetaData> constructMetaList(List<File> fileList) {
+    private void constructMetaList(List<File> fileList) {
         List<File> filesToDeleted = new ArrayList<>();
 
         for (File file : fileList) {
@@ -776,8 +776,12 @@ public class MainActivity extends AppCompatActivity {
         for (File file : filesToDeleted) {
             fileList.remove(file);
         }
+    }
 
-        return musicMetaList;
+    @Override
+    public void onBackPressed() {
+        moveTaskToBack(true);
+        super.onBackPressed();
     }
 
     @Override
@@ -813,6 +817,4 @@ public class MainActivity extends AppCompatActivity {
 }
 
 //todo
-//解决播放列表的加载问题
-//可以考虑对象序列化
-//也可以考虑将 metaDateList 保存下来
+//应该考虑使用服务来播放音乐
