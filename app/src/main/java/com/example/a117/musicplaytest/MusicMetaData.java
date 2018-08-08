@@ -3,8 +3,9 @@ package com.example.a117.musicplaytest;
 import android.media.MediaMetadataRetriever;
 
 import java.io.File;
+import java.io.Serializable;
 
-public class MusicMetaData {
+public class MusicMetaData implements Serializable {
 
     public String title = null;
     public String album = null;
@@ -13,7 +14,7 @@ public class MusicMetaData {
     public String duration = null;
     public String bitrate = null;
     public String date = null;
-//    public byte[] picture = null;
+    public byte[] picture = null;
 
 
     public MusicMetaData(File musicFile) {
@@ -27,7 +28,7 @@ public class MusicMetaData {
             duration = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION);
             bitrate = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE);
             date = mmr.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DATE);
-//            picture = mmr.getEmbeddedPicture();
+            picture = mmr.getEmbeddedPicture();
             mmr.release();
         }
         catch (Exception e) {
