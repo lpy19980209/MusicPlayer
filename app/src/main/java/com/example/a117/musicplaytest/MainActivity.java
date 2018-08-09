@@ -272,6 +272,7 @@ public class MainActivity extends AppCompatActivity {
     List<File> musicFileList = new ArrayList<>();
 
     List<MusicMetaData> musicMetaList = new ArrayList<>();
+    List<MusicMetaData> musicMetaListBuffer;
 
     List<File> musicFileListBuffer;
     MediaPlayer mediaPlayer = new MediaPlayer();
@@ -841,11 +842,13 @@ public class MainActivity extends AppCompatActivity {
     private void constructMetaList(List<File> fileList) {
         List<File> filesToDeleted = new ArrayList<>();
 
+        musicMetaListBuffer = new ArrayList<>();
+
         for (File file : fileList) {
             MusicMetaData metaData = new MusicMetaData(file);
 
             if (metaData.title != null) {
-                musicMetaList.add(metaData);
+                musicMetaListBuffer.add(metaData);
             } else {
                 filesToDeleted.add(file);
             }
@@ -854,6 +857,8 @@ public class MainActivity extends AppCompatActivity {
         for (File file : filesToDeleted) {
             fileList.remove(file);
         }
+
+        musicMetaList = musicMetaListBuffer;
     }
 
     @Override
