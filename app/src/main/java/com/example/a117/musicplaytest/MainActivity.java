@@ -152,10 +152,10 @@ public class MainActivity extends AppCompatActivity {
         public void handleMessage(Message msg) {
             Log.d("mymessagee", "handleMessage: " + "开始执行handle");
             if (msg.what == MUSIC_FILE_LOAD_FINISH) {
-                Log.d("mydebug", "walkMusicFiles: " + musicFileList.toString());
-
 
                 musicFileList = musicFileListBuffer;
+
+                Log.d("mydebug", "walkMusicFiles: " + musicFileList.toString());
 
 //                musicListviewAdapter = new MusicListviewAdapter(MainActivity.this, musicFileList);
                 //一定要分辨清楚耗时操作
@@ -312,10 +312,13 @@ public class MainActivity extends AppCompatActivity {
 
                 musicFileListBuffer.addAll(0, musicFileList);
 
+                constructMetaList(musicFileListBuffer);
+
+                //必须先construct再保存，因为上述过程会剔除有问题的文件
+
                 //保存音乐列表
                 saveMusicList(musicFileListBuffer);
 
-                constructMetaList(musicFileListBuffer);
 
                 saveMetaList();
 
@@ -611,7 +614,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void restoreMusicList() {
 
-        Log.d(TAG, "restoreMusicList: 进入 restore");
+        Log.d(TAG, "restoreMusicList: 进入 restoreMusiList");
 
         new Thread(new Runnable() {
             @Override
@@ -650,7 +653,7 @@ public class MainActivity extends AppCompatActivity {
                         musicListviewAdapter = new MusicListviewAdapter(MainActivity.this, musicMetaList);
 
                         myHandler.sendEmptyMessage(MUSIC_FILE_LOAD_FINISH);
-                        Log.d(TAG, "run: restore结束");
+                        Log.d(TAG, "run: restoreMusicList in run 结束");
                     } catch (Exception e) {
                         e.printStackTrace();
                         Log.d(TAG, "run: restore出错");
@@ -737,12 +740,16 @@ public class MainActivity extends AppCompatActivity {
         outState.putInt(PLAY_INDEX, index);
         outState.putBoolean(PLAY_STATE, mediaPlayer.isPlaying());
 
+
+
         try {
             outState.putInt(PLAY_PROGRESS, mediaPlayer.getCurrentPosition());
         } catch (Exception e) {
             e.printStackTrace();
         }
         //可能会在特定时刻导致错误
+
+        Log.d(TAG, "onSaveInstanceState: ");
     }
 
     @Override
@@ -756,6 +763,8 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) {
             e.printStackTrace();
         }
+
+        Log.d(TAG, "onSaveInstanceState: ");
     }
 
     @Override
