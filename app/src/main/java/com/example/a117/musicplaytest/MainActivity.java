@@ -41,6 +41,7 @@ import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.PopupMenu;
+import android.widget.PopupWindow;
 import android.widget.ProgressBar;
 import android.widget.RemoteViews;
 import android.widget.TextView;
@@ -91,6 +92,8 @@ public class MainActivity extends AppCompatActivity {
     private int lastLongClicked = -1;
     private MusicListviewAdapter lastAdapter = null;
     //用于处理长按菜单事件
+
+    PopupWindow musicListPopupWindow;
 
     private BroadcastReceiver renewListReceivder = new BroadcastReceiver() {
         @Override
@@ -200,22 +203,40 @@ public class MainActivity extends AppCompatActivity {
                             lastLongClicked = i;
                             lastAdapter = (MusicListviewAdapter) adapterView.getAdapter();
 
-                            Context wrapper = new ContextThemeWrapper(MainActivity.this, R.style.MyPopupStyle);
+//                            Context wrapper = new ContextThemeWrapper(MainActivity.this, R.style.MyPopupStyle);
+//
+//                            PopupMenu popupMenu = new PopupMenu(wrapper, view);
+//                            popupMenu.getMenuInflater().inflate(R.menu.music_list_menu, popupMenu.getMenu());
+//                            popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+//                                @Override
+//                                public boolean onMenuItemClick(MenuItem menuItem) {
+//
+//                                    if(menuItem.getTitle().equals("移出歌单")) {
+//                                        removeMusic();
+//                                    }
+//
+//                                    return true;
+//                                }
+//                            });
+//                            popupMenu.show();
+                            int width = view.getWidth();
+                            int height = view.getHeight();
 
-                            PopupMenu popupMenu = new PopupMenu(wrapper, view);
-                            popupMenu.getMenuInflater().inflate(R.menu.music_list_menu, popupMenu.getMenu());
-                            popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                            View popView = getLayoutInflater().inflate(R.layout.musiclist_popwindow, null);
+                            popView.findViewById(R.id.musiclist_popwindow_remove).setOnClickListener(new View.OnClickListener() {
                                 @Override
-                                public boolean onMenuItemClick(MenuItem menuItem) {
-
-                                    if(menuItem.getTitle().equals("移出歌单")) {
-                                        removeMusic();
-                                    }
-
-                                    return true;
+                                public void onClick(View view) {
+                                    removeMusic();
+                                    musicListPopupWindow.dismiss();
                                 }
                             });
-                            popupMenu.show();
+
+
+                            musicListPopupWindow = new PopupWindow(popView, width/4, height, true);
+                            musicListPopupWindow.setBackgroundDrawable(getResources().getDrawable(R.drawable.main_background));
+                            musicListPopupWindow.setOutsideTouchable(true);
+                            musicListPopupWindow.setTouchable(true);
+                            musicListPopupWindow.showAsDropDown(view, width*3/4/2, 0);
 
                             return true;
                         }
