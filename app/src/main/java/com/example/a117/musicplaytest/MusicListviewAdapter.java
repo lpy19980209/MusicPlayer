@@ -80,4 +80,5 @@ public class MusicListviewAdapter extends BaseAdapter {
 
         return view;
     }
+
 }

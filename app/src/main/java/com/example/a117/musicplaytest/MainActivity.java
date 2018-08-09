@@ -9,6 +9,7 @@ import android.app.PendingIntent;
 import android.app.RemoteAction;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
@@ -29,6 +30,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.view.ContextThemeWrapper;
 import android.util.Log;
 import android.util.Xml;
 import android.view.MenuItem;
@@ -38,6 +40,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
+import android.widget.PopupMenu;
 import android.widget.ProgressBar;
 import android.widget.RemoteViews;
 import android.widget.TextView;
@@ -84,6 +87,10 @@ public class MainActivity extends AppCompatActivity {
     private String PLAY_PROGRESS = "PLAY_PROGRESS";
     private String PLAY_INDEX = "PLAY_INDEX";
     private String PLAY_STATE = "PLAY_STATE";
+
+    private int lastLongClicked = -1;
+    private MusicListviewAdapter lastAdapter = null;
+    //用于处理长按菜单事件
 
     private BroadcastReceiver renewListReceivder = new BroadcastReceiver() {
         @Override
@@ -184,7 +191,33 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                             playMusic(i);
+                        }
+                    });
+                    listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+                        @Override
+                        public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
 
+                            lastLongClicked = i;
+                            lastAdapter = (MusicListviewAdapter) adapterView.getAdapter();
+
+                            Context wrapper = new ContextThemeWrapper(MainActivity.this, R.style.MyPopupStyle);
+
+                            PopupMenu popupMenu = new PopupMenu(wrapper, view);
+                            popupMenu.getMenuInflater().inflate(R.menu.music_list_menu, popupMenu.getMenu());
+                            popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+                                @Override
+                                public boolean onMenuItemClick(MenuItem menuItem) {
+
+                                    if(menuItem.getTitle().equals("移出歌单")) {
+                                        removeMusic();
+                                    }
+
+                                    return true;
+                                }
+                            });
+                            popupMenu.show();
+
+                            return true;
                         }
                     });
                 }
@@ -593,7 +626,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             XmlSerializer serializer = Xml.newSerializer();
             OutputStream os = openFileOutput("musicList.xml", Context.MODE_PRIVATE);
-            serializer.setOutput(os, "UTF_8");
+            serializer.setOutput(os, "UTF-8");
             serializer.startDocument("UTF-8", true);
 
             serializer.startTag(null, "musics");
@@ -805,6 +838,26 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onBackPressed() {
         moveTaskToBack(true);
+    }
+
+    private void removeMusic() {
+
+        musicFileList.remove(lastLongClicked);
+        musicMetaList.remove(lastLongClicked);
+        lastAdapter.notifyDataSetChanged();
+
+        saveMetaList();
+        saveMusicList(musicFileList);
+
+        if(index == lastLongClicked) {
+            mediaPlayer.reset();
+        }
+        else if(lastLongClicked < index) {
+            index--;
+        }
+        else if(lastLongClicked > index) {
+            //index不变
+        }
     }
 
     @Override
