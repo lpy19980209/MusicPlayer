@@ -12,6 +12,7 @@ import android.content.Context;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -58,6 +59,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Reader;
+import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -227,6 +229,8 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        setStatusBar();
+
         applyPermissions();
 
         findElements();
@@ -245,6 +249,16 @@ public class MainActivity extends AppCompatActivity {
 //        showDrawer();
 
 
+    }
+
+    private void setStatusBar() {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) try {
+            Class decorViewClazz = Class.forName("com.android.internal.policy.DecorView");
+            Field field = decorViewClazz.getDeclaredField("mSemiTransparentStatusBarColor");
+            field.setAccessible(true);
+            field.setInt(getWindow().getDecorView(), Color.TRANSPARENT);  //改为透明
+        } catch (Exception e) {
+        }
     }
 
     private void findElements() {
