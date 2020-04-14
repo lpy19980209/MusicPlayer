@@ -1,1 +1,2 @@
 # MusicPlayer
+Android本地音乐播放器，其中使用fregment实现了一个简单的本地文件浏览器
