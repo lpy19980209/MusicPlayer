@@ -9,9 +9,11 @@ import android.app.PendingIntent;
 import android.app.RemoteAction;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.media.AudioFocusRequest;
 import android.media.AudioManager;
 import android.media.MediaPlayer;
@@ -28,6 +30,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.view.ContextThemeWrapper;
 import android.util.Log;
 import android.util.Xml;
 import android.view.MenuItem;
@@ -37,6 +40,8 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
+import android.widget.PopupMenu;
+import android.widget.PopupWindow;
 import android.widget.ProgressBar;
 import android.widget.RemoteViews;
 import android.widget.TextView;
@@ -54,8 +59,11 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Reader;
+import java.lang.reflect.Field;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -81,6 +89,12 @@ public class MainActivity extends AppCompatActivity {
     private String PLAY_INDEX = "PLAY_INDEX";
     private String PLAY_STATE = "PLAY_STATE";
 
+    private int lastLongClicked = -1;
+    private MusicListviewAdapter lastAdapter = null;
+    //用于处理长按菜单事件
+
+    PopupWindow musicListPopupWindow;
+
     private BroadcastReceiver renewListReceivder = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -97,7 +111,7 @@ public class MainActivity extends AppCompatActivity {
     private BroadcastReceiver noticationReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
-            switch(intent.getAction()) {
+            switch (intent.getAction()) {
                 case "com.lpy.nextmusic":
                     nextMusic();
                     break;
@@ -105,7 +119,7 @@ public class MainActivity extends AppCompatActivity {
                     lastMusic();
                     break;
                 case "com.lpy.ppmusic":
-                    if(mediaPlayer.isPlaying())
+                    if (mediaPlayer.isPlaying())
                         pauseMusic();
                     else
                         playMusic();
@@ -122,8 +136,8 @@ public class MainActivity extends AppCompatActivity {
             int duration;
             int currentPosition;
 
-            while(true) {
-                if(mediaPlayer.isPlaying()) {
+            while (true) {
+                if (mediaPlayer.isPlaying()) {
                     duration = mediaPlayer.getDuration();
                     currentPosition = mediaPlayer.getCurrentPosition();
                     Log.d("progress", "run: duration=" + TimeUtil.sToHMS(duration) + ", currentPosition=" + TimeUtil.sToHMS(currentPosition));
@@ -132,8 +146,7 @@ public class MainActivity extends AppCompatActivity {
 
                 try {
                     Thread.sleep(1000);
-                }
-                catch (Exception e) {
+                } catch (Exception e) {
                     e.printStackTrace();
                 }
             }
@@ -148,12 +161,11 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void handleMessage(Message msg) {
             Log.d("mymessagee", "handleMessage: " + "开始执行handle");
-            if(msg.what ==  MUSIC_FILE_LOAD_FINISH)
-            {
-                Log.d("mydebug", "walkMusicFiles: " + musicFileList.toString());
-
+            if (msg.what == MUSIC_FILE_LOAD_FINISH) {
 
                 musicFileList = musicFileListBuffer;
+
+                Log.d("mydebug", "walkMusicFiles: " + musicFileList.toString());
 
 //                musicListviewAdapter = new MusicListviewAdapter(MainActivity.this, musicFileList);
                 //一定要分辨清楚耗时操作
@@ -162,7 +174,7 @@ public class MainActivity extends AppCompatActivity {
 
                 listView.setAdapter(musicListviewAdapter);
 
-                if(!hasInit) {
+                if (!hasInit) {
                     playMusic(index);
 
                     mediaPlayer.seekTo(playProgress);
@@ -173,7 +185,7 @@ public class MainActivity extends AppCompatActivity {
 
                     updateProgress(duration, progress, percent);
 
-                    if(!isPlayingBefore)
+                    if (!isPlayingBefore)
                         pauseMusic();
 
                     playProgressRecord.start();
@@ -182,7 +194,51 @@ public class MainActivity extends AppCompatActivity {
                         @Override
                         public void onItemClick(AdapterView<?> adapterView, View view, int i, long l) {
                             playMusic(i);
+                        }
+                    });
+                    listView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+                        @Override
+                        public boolean onItemLongClick(AdapterView<?> adapterView, View view, int i, long l) {
 
+                            lastLongClicked = i;
+                            lastAdapter = (MusicListviewAdapter) adapterView.getAdapter();
+
+//                            Context wrapper = new ContextThemeWrapper(MainActivity.this, R.style.MyPopupStyle);
+//
+//                            PopupMenu popupMenu = new PopupMenu(wrapper, view);
+//                            popupMenu.getMenuInflater().inflate(R.menu.music_list_menu, popupMenu.getMenu());
+//                            popupMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() {
+//                                @Override
+//                                public boolean onMenuItemClick(MenuItem menuItem) {
+//
+//                                    if(menuItem.getTitle().equals("移出歌单")) {
+//                                        removeMusic();
+//                                    }
+//
+//                                    return true;
+//                                }
+//                            });
+//                            popupMenu.show();
+                            int width = view.getWidth();
+                            int height = view.getHeight();
+
+                            View popView = getLayoutInflater().inflate(R.layout.musiclist_popwindow, null);
+                            popView.findViewById(R.id.musiclist_popwindow_remove).setOnClickListener(new View.OnClickListener() {
+                                @Override
+                                public void onClick(View view) {
+                                    removeMusic();
+                                    musicListPopupWindow.dismiss();
+                                }
+                            });
+
+
+                            musicListPopupWindow = new PopupWindow(popView, width/4, height, true);
+                            musicListPopupWindow.setBackgroundDrawable(getResources().getDrawable(R.drawable.main_background));
+                            musicListPopupWindow.setOutsideTouchable(true);
+                            musicListPopupWindow.setTouchable(true);
+                            musicListPopupWindow.showAsDropDown(view, width*3/4/2, 0);
+
+                            return true;
                         }
                     });
                 }
@@ -214,6 +270,10 @@ public class MainActivity extends AppCompatActivity {
     //用于只是 destory 之前是否在播放
 
     List<File> musicFileList = new ArrayList<>();
+
+    List<MusicMetaData> musicMetaList = new ArrayList<>();
+    List<MusicMetaData> musicMetaListBuffer;
+
     List<File> musicFileListBuffer;
     MediaPlayer mediaPlayer = new MediaPlayer();
 
@@ -223,6 +283,8 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "onCreate: ");
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        setStatusBar();
 
         applyPermissions();
 
@@ -235,13 +297,23 @@ public class MainActivity extends AppCompatActivity {
 
         restoreMusicList();
 
-        if(savedInstanceState == null) {
+        if (savedInstanceState == null) {
             restorePlayStateFromPerferences();
         }
 
 //        showDrawer();
 
 
+    }
+
+    private void setStatusBar() {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) try {
+            Class decorViewClazz = Class.forName("com.android.internal.policy.DecorView");
+            Field field = decorViewClazz.getDeclaredField("mSemiTransparentStatusBarColor");
+            field.setAccessible(true);
+            field.setInt(getWindow().getDecorView(), Color.TRANSPARENT);  //改为透明
+        } catch (Exception e) {
+        }
     }
 
     private void findElements() {
@@ -260,7 +332,7 @@ public class MainActivity extends AppCompatActivity {
 
         final File musicDirPath = new File(musicDir);
 
-        if(!musicDirPath.exists()) {
+        if (!musicDirPath.exists()) {
             Toast.makeText(MainActivity.this, "路径不存在", Toast.LENGTH_SHORT).show();
             return;
         }
@@ -276,7 +348,7 @@ public class MainActivity extends AppCompatActivity {
 
                 musicFileListBuffer = new ArrayList<>();
 
-                for(File music : musicDirPath.listFiles(new FileFilter() {
+                for (File music : musicDirPath.listFiles(new FileFilter() {
                     @Override
                     public boolean accept(File file) {
                         return file.getName().matches(".*\\.(mp3|flac)");
@@ -286,7 +358,7 @@ public class MainActivity extends AppCompatActivity {
                 }
                 Log.d("wanttosee", "run: " + "数据更新完毕");
 
-                Collections.sort(musicFileListBuffer,new Comparator<File>() {
+                Collections.sort(musicFileListBuffer, new Comparator<File>() {
                     @Override
                     public int compare(File f1, File f2) {
                         return f1.getName().compareTo(f2.getName());
@@ -295,11 +367,17 @@ public class MainActivity extends AppCompatActivity {
 
                 musicFileListBuffer.addAll(0, musicFileList);
 
+                constructMetaList(musicFileListBuffer);
+
+                //必须先construct再保存，因为上述过程会剔除有问题的文件
+
                 //保存音乐列表
                 saveMusicList(musicFileListBuffer);
 
 
-                musicListviewAdapter = new MusicListviewAdapter(MainActivity.this, musicFileListBuffer);
+                saveMetaList();
+
+                musicListviewAdapter = new MusicListviewAdapter(MainActivity.this, musicMetaList);
 
 
                 myHandler.sendEmptyMessage(MUSIC_FILE_LOAD_FINISH);
@@ -313,10 +391,9 @@ public class MainActivity extends AppCompatActivity {
         playOrPauseButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if(mediaPlayer.isPlaying()) {
+                if (mediaPlayer.isPlaying()) {
                     pauseMusic();
-                }
-                else {
+                } else {
                     playMusic();
                 }
             }
@@ -340,20 +417,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void applyPermissions() {
-        if(ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
+        if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED) {
 
-        }
-        else {
-            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE},1);
+        } else {
+            ActivityCompat.requestPermissions(MainActivity.this, new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, 1);
         }
     }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if(grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
-        }
-        else {
+        } else {
             Toast.makeText(MainActivity.this, "获取权限失败", Toast.LENGTH_LONG);
         }
     }
@@ -379,13 +454,11 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onAudioFocusChange(int i) {
                         Toast.makeText(MainActivity.this, "音频焦点改变了", Toast.LENGTH_SHORT);
-                        if(i == AUDIOFOCUS_LOSS_TRANSIENT) {
+                        if (i == AUDIOFOCUS_LOSS_TRANSIENT) {
                             pauseMusic();
-                        }
-                        else if(i == AUDIOFOCUS_GAIN) {
+                        } else if (i == AUDIOFOCUS_GAIN) {
                             playMusic();
-                        }
-                        else if(i == AUDIOFOCUS_LOSS) {
+                        } else if (i == AUDIOFOCUS_LOSS) {
                             pauseMusic();
                             am.abandonAudioFocus(audioFocusChangeListener);
                         }
@@ -394,10 +467,9 @@ public class MainActivity extends AppCompatActivity {
 
         int result = am.requestAudioFocus(audioFocusChangeListener, AudioManager.STREAM_MUSIC, AudioManager.AUDIOFOCUS_GAIN);
 
-        if(result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+        if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
 
-        }
-        else {
+        } else {
             Toast.makeText(MainActivity.this, "获取音频焦点失败", Toast.LENGTH_LONG);
         }
     }
@@ -405,11 +477,11 @@ public class MainActivity extends AppCompatActivity {
 
     public void playMusic() {
         mediaPlayer.start();
-        if(mediaPlayer.isPlaying())
+        if (mediaPlayer.isPlaying())
             playOrPauseButton.setImageResource(R.drawable.pause_music);
         else
             Toast.makeText(MainActivity.this, "当前没有歌曲可以播放，请添加文件夹", Toast.LENGTH_LONG).show();
-        if(showNotification)
+        if (showNotification)
             sendNotication();
     }
 
@@ -417,13 +489,13 @@ public class MainActivity extends AppCompatActivity {
     public void pauseMusic() {
         mediaPlayer.pause();
         playOrPauseButton.setImageResource(R.drawable.play_music);
-        if(showNotification)
+        if (showNotification)
             sendNotication();
     }
 
 
     public boolean playMusic(int i) {
-        if(i >= 0 && i < musicFileList.size()) {
+        if (i >= 0 && i < musicFileList.size()) {
             try {
                 mediaPlayer.reset();
                 mediaPlayer.setDataSource(musicFileList.get(i).getPath());
@@ -431,28 +503,27 @@ public class MainActivity extends AppCompatActivity {
                 mediaPlayer.start();
                 index = i;
 
-                if(mediaPlayer.isPlaying())
+                if (mediaPlayer.isPlaying())
                     playOrPauseButton.setImageResource(R.drawable.pause_music);
 
-                if(showNotification)
+                if (showNotification)
                     sendNotication();
 
             } catch (IOException e) {
                 e.printStackTrace();
             }
             return true;
-        }
-        else
+        } else
             return false;
     }
 
     public void nextMusic() {
-        if(!playMusic(index+1))
+        if (!playMusic(index + 1))
             Toast.makeText(MainActivity.this, "没有下一首了", Toast.LENGTH_SHORT).show();
     }
 
     public void lastMusic() {
-        if(!playMusic(index-1))
+        if (!playMusic(index - 1))
             Toast.makeText(MainActivity.this, "没有上一首了", Toast.LENGTH_SHORT).show();
     }
 
@@ -495,7 +566,7 @@ public class MainActivity extends AppCompatActivity {
                         break;
                     case "清空音乐列表":
                         deleteFile("musicList.xml");
-                        SharedPreferences.Editor editor =  getSharedPreferences("play_state.preference", MODE_PRIVATE).edit();
+                        SharedPreferences.Editor editor = getSharedPreferences("play_state.preference", MODE_PRIVATE).edit();
                         editor.clear();
                         editor.apply();
                         finish();
@@ -516,7 +587,7 @@ public class MainActivity extends AppCompatActivity {
 
         RemoteViews remoteViews = new RemoteViews(getPackageName(), R.layout.notication_layout);
 
-        if(mediaPlayer.isPlaying())
+        if (mediaPlayer.isPlaying())
             remoteViews.setImageViewResource(R.id.play_or_pause, R.drawable.pause_music);
         else
             ;//do nothing
@@ -534,16 +605,16 @@ public class MainActivity extends AppCompatActivity {
         remoteViews.setOnClickPendingIntent(R.id.last_music, lastPending);
 
 
-
         PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, new Intent(this, MainActivity.class), PendingIntent.FLAG_UPDATE_CURRENT);
 
-        builder.setContent(remoteViews);
-        NotificationManager notificationManager = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+        builder.setContent(remoteViews)
+                .setContentIntent(pendingIntent);
+        NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 
         String channelID = "1";
         String channelName = "channel_name";
 
-        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(channelID, channelName, NotificationManager.IMPORTANCE_LOW);
 
             channel.enableLights(false);
@@ -561,7 +632,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void clearNotication() {
-        NotificationManager notificationManager = (NotificationManager)getSystemService(NOTIFICATION_SERVICE);
+        NotificationManager notificationManager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         notificationManager.cancelAll();
     }
 
@@ -577,12 +648,12 @@ public class MainActivity extends AppCompatActivity {
         try {
             XmlSerializer serializer = Xml.newSerializer();
             OutputStream os = openFileOutput("musicList.xml", Context.MODE_PRIVATE);
-            serializer.setOutput(os, "UTF_8");
+            serializer.setOutput(os, "UTF-8");
             serializer.startDocument("UTF-8", true);
 
             serializer.startTag(null, "musics");
 
-            for(File file : files) {
+            for (File file : files) {
                 serializer.startTag(null, "path");
                 serializer.text(file.getPath());
                 serializer.endTag(null, "path");
@@ -591,21 +662,20 @@ public class MainActivity extends AppCompatActivity {
             serializer.endTag(null, "musics");
 
             serializer.endDocument();
-        }
-        catch (IOException e) {
+        } catch (IOException e) {
 
         }
     }
 
     private void restoreMusicList() {
 
-        Log.d(TAG, "restoreMusicList: 进入 restore");
+        Log.d(TAG, "restoreMusicList: 进入 restoreMusiList");
 
         new Thread(new Runnable() {
             @Override
             public void run() {
                 Log.d(TAG, "run: directory");
-                if(new File(getFilesDir(),"musicList.xml").exists()) {
+                if (new File(getFilesDir(), "musicList.xml").exists()) {
 
                     musicLoadProgressBar.setVisibility(View.VISIBLE);
 
@@ -633,19 +703,19 @@ public class MainActivity extends AppCompatActivity {
                             event = parser.next();
                         }
 
-                        musicListviewAdapter = new MusicListviewAdapter(MainActivity.this, musicFileListBuffer);
+                        restoreMetaList();
+
+                        musicListviewAdapter = new MusicListviewAdapter(MainActivity.this, musicMetaList);
 
                         myHandler.sendEmptyMessage(MUSIC_FILE_LOAD_FINISH);
-                        Log.d(TAG, "run: restore结束");
+                        Log.d(TAG, "run: restoreMusicList in run 结束");
                     } catch (Exception e) {
                         e.printStackTrace();
                         Log.d(TAG, "run: restore出错");
                     } finally {
 
                     }
-                }
-
-                else {
+                } else {
                     showDrawer();
                 }
             }
@@ -653,13 +723,55 @@ public class MainActivity extends AppCompatActivity {
 
     }
 
-    private void updateProgress(final String duration,final  String currentPosition,final double percent) {
+    private void saveMetaList() {
+        ObjectOutputStream objOut = null;
+        try {
+            objOut = new ObjectOutputStream(openFileOutput("metaListObject.obj", MODE_PRIVATE));
+            objOut.writeObject(musicMetaList);
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+        finally {
+            if(objOut != null) {
+                try {
+                    objOut.close();
+                }
+                catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private void restoreMetaList() {
+        ObjectInputStream objIn = null;
+        try {
+            objIn = new ObjectInputStream(openFileInput("metaListObject.obj"));
+            musicMetaList = (List<MusicMetaData>) objIn.readObject();
+        }
+        catch (Exception e) {
+            e.printStackTrace();
+        }
+        finally {
+            if(objIn != null) {
+                try {
+                    objIn.close();
+                }
+                catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    private void updateProgress(final String duration, final String currentPosition, final double percent) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                ((TextView)findViewById(R.id.current_position)).setText(currentPosition);
-                ((TextView)findViewById(R.id.duration)).setText(duration);
-                ((ProgressBar)findViewById(R.id.play_progress)).setProgress((int)(percent * 1000));
+                ((TextView) findViewById(R.id.current_position)).setText(currentPosition);
+                ((TextView) findViewById(R.id.duration)).setText(duration);
+                ((ProgressBar) findViewById(R.id.play_progress)).setProgress((int) (percent * 1000));
             }
         });
     }
@@ -683,13 +795,16 @@ public class MainActivity extends AppCompatActivity {
         outState.putInt(PLAY_INDEX, index);
         outState.putBoolean(PLAY_STATE, mediaPlayer.isPlaying());
 
+
+
         try {
             outState.putInt(PLAY_PROGRESS, mediaPlayer.getCurrentPosition());
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         //可能会在特定时刻导致错误
+
+        Log.d(TAG, "onSaveInstanceState: ");
     }
 
     @Override
@@ -700,10 +815,11 @@ public class MainActivity extends AppCompatActivity {
 
         try {
             playProgress = savedInstanceState.getInt(PLAY_PROGRESS);
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
+
+        Log.d(TAG, "onSaveInstanceState: ");
     }
 
     @Override
@@ -722,6 +838,53 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
+
+    private void constructMetaList(List<File> fileList) {
+        List<File> filesToDeleted = new ArrayList<>();
+
+        musicMetaListBuffer = new ArrayList<>();
+
+        for (File file : fileList) {
+            MusicMetaData metaData = new MusicMetaData(file);
+
+            if (metaData.title != null) {
+                musicMetaListBuffer.add(metaData);
+            } else {
+                filesToDeleted.add(file);
+            }
+        }
+
+        for (File file : filesToDeleted) {
+            fileList.remove(file);
+        }
+
+        musicMetaList = musicMetaListBuffer;
+    }
+
+    @Override
+    public void onBackPressed() {
+        moveTaskToBack(true);
+    }
+
+    private void removeMusic() {
+
+        musicFileList.remove(lastLongClicked);
+        musicMetaList.remove(lastLongClicked);
+        lastAdapter.notifyDataSetChanged();
+
+        saveMetaList();
+        saveMusicList(musicFileList);
+
+        if(index == lastLongClicked) {
+            mediaPlayer.reset();
+        }
+        else if(lastLongClicked < index) {
+            index--;
+        }
+        else if(lastLongClicked > index) {
+            //index不变
+        }
+    }
 
     @Override
     protected void onRestart() {
@@ -742,7 +905,6 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
     @Override
     protected void onResume() {
         Log.d(TAG, "onResume: ");
@@ -757,6 +919,4 @@ public class MainActivity extends AppCompatActivity {
 }
 
 //todo
-//解决播放列表的加载问题
-//可以考虑对象序列化
-//也可以考虑将 metaDateList 保存下来
+//应该考虑使用服务来播放音乐

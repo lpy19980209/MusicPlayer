@@ -1,5 +1,7 @@
 package com.example.a117.musicplaytest;
 
+import android.graphics.Color;
+import android.os.Build;
 import android.os.Environment;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
@@ -14,6 +16,7 @@ import android.widget.Button;
 import android.widget.Toast;
 
 import java.io.File;
+import java.lang.reflect.Field;
 
 
 public class ActivityFileExplore extends AppCompatActivity implements ConnInterfaceForFileExplore {
@@ -25,9 +28,21 @@ public class ActivityFileExplore extends AppCompatActivity implements ConnInterf
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_file_explore);
 
+        setStatusBar();
+
         localBroadcastManager = LocalBroadcastManager.getInstance(this);
 
         initFragment();
+    }
+
+    private void setStatusBar() {
+        if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) try {
+            Class decorViewClazz = Class.forName("com.android.internal.policy.DecorView");
+            Field field = decorViewClazz.getDeclaredField("mSemiTransparentStatusBarColor");
+            field.setAccessible(true);
+            field.setInt(getWindow().getDecorView(), Color.TRANSPARENT);  //改为透明
+        } catch (Exception e) {
+        }
     }
 
     @Override

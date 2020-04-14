@@ -22,29 +22,13 @@ public class MusicListviewAdapter extends BaseAdapter {
     }
 
     private Context mContext;
-    private List<File> fileList;
+
     private List<MusicMetaData> musicMetaList = new ArrayList<>();
 
-    public MusicListviewAdapter(Context context, List<File> fileList) {
+    public MusicListviewAdapter(Context context, List<MusicMetaData> musicMetaList) {
         super();
         mContext = context;
-        this.fileList = fileList;
-        List<File> filesToDeleted = new ArrayList<>();
-
-        for (File file : fileList) {
-            MusicMetaData metaData = new MusicMetaData(file);
-
-            if(metaData.title != null) {
-                musicMetaList.add(metaData);
-            }
-            else {
-                filesToDeleted.add(file);
-            }
-        }
-
-        for(File file : filesToDeleted) {
-            fileList.remove(file);
-        }
+        this.musicMetaList = musicMetaList;
     }
 
     @Override
@@ -54,12 +38,12 @@ public class MusicListviewAdapter extends BaseAdapter {
 
     @Override
     public Object getItem(int i) {
-        return fileList.get(i);
+        return musicMetaList.get(i);
     }
 
     @Override
     public int getCount() {
-        return fileList.size();
+        return musicMetaList.size();
     }
 
     @Override
@@ -87,20 +71,14 @@ public class MusicListviewAdapter extends BaseAdapter {
             view.setTag(container);
         }
 
-
-
-        Log.d("wanttosee", "getView: " + i);
         String title = musicMetaList.get(i).title;
-        title = title == null ? "* " + fileList.get(i).getName() : title;
-
         String artist = musicMetaList.get(i).artist;
-        artist  = artist == null ? "* " + "未知歌手" : artist;
-
         String album = musicMetaList.get(i).album;
-        album  = album == null ? "* " + "未知唱片" : album;
 
         titleTextView.setText(title);
         artistTextView.setText(artist + " - " + album);
+
         return view;
     }
+
 }
